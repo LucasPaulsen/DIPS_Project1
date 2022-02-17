@@ -1,7 +1,7 @@
 class MessageBroker:
     def __init__(self):
         self.msgCount = 0
-    def reset():
+    def reset(self):
         self.msgCount = 0
     def msg(self, sndr, rcvr, text):
         self.msgCount += 1
@@ -33,7 +33,7 @@ class Process:
                 for p in self.otherNodes:                    
                     self.msgBroker.msg(self, p, "Coordinator")
                 self.coordPending = False
-                self.coordWait = 2
+                self.coordWait = 3
             
     def sendElection(self):
         self.elecPending = False
@@ -47,20 +47,21 @@ class Process:
                 
     def receiveElection(self, p):
         if(self.alive and self.ID > p.ID):
-            self.electionPending = True
+            self.elecPending = True
             self.msgBroker.msg(self, p, "OK")
+            p.receiveOK(self)
             
-    def electionResponse(self, OK):
-        if (OK == True):
-            self.bullied = True
+    def receiveOK(self, p): # 
+        self.bullied = True
+
 
 def Simulation(nProc, startProc, maxIter):
     # nProc = number of processes to include
     # startProc = the process starting the election  
     msgBroker = MessageBroker()
     procs = []
-    for i in range(nProc+1):
-        Px = Process(i, True, msgBroker)
+    for i in range(nProc):
+        Px = Process(i+1, True, msgBroker)
         procs.append(Px)
     
     for p in procs:
@@ -73,5 +74,5 @@ def Simulation(nProc, startProc, maxIter):
             p.tick()
         
    
-Simulation(6, 1, 10) # Run simulation
+Simulation(60, 0, 100) # Run simulation
         
