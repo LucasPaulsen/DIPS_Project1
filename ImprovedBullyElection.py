@@ -4,6 +4,11 @@ from enum import Enum
 
 ELECTION_STARTER = 0
 SIZE = 500
+MSG_COUNTER = 0
+
+def increment():
+    global MSG_COUNTER    
+    MSG_COUNTER = MSG_COUNTER+1
 
 class BullyMsgType(Enum):
     ELECTION = 1
@@ -24,7 +29,7 @@ class MyNode(wsp.Node):
     ##################
     def init(self):
         super().init()
-        self.OKreplies = [] # To hold IDs of responding nodes when holding election
+        self.bestOK = self.id
         self.leader = None
 
     ##################
@@ -39,17 +44,18 @@ class MyNode(wsp.Node):
 
     ##################
     def election(self):
-        self.log(f"ELECTION")
-        self.OKreplies = []
+        self.bestOK = self.id
         elecMsg = BullyMsg(BullyMsgType.ELECTION, src=self.id, data="")
-        self.send(wsp.BROADCAST_ADDR, msg = elecMsg)        
+        
+        for n in self.neighbors:
+            if n.id > self.id:
+                self.send(n.id, msg = elecMsg) 
+
         self.sim.delayed_exec(delay=0.5, func=self.coordinator)
 
     ######################
     def coordinator(self):
-        newLeader = max(self.OKreplies)
-        self.log(f"COORDINATOR: {newLeader}")
-        coordMsg = BullyMsg(BullyMsgType.COORDINATOR, src=self.id, data=newLeader)
+        coordMsg = BullyMsg(BullyMsgType.COORDINATOR, src=self.id, data=self.bestOK)
         self.send(wsp.BROADCAST_ADDR, msg = coordMsg)    
 
     ##################
@@ -59,15 +65,18 @@ class MyNode(wsp.Node):
 
     ##################
     def on_receive(self, sender, msg, **kwargs):
-        if msg.type == BullyMsgType.ELECTION:
+        increment()
+        if msg.type == BullyMsgType.ELECTION:            
+            self.log(f"{MSG_COUNTER} ELECTION from {sender}")
             if self.id > sender:
-                self.log(f"OK")
                 okMsg = BullyMsg(BullyMsgType.OK, src=self.id, data="")
                 self.send(sender, okMsg)
         if msg.type == BullyMsgType.OK:
-            self.OKreplies.append(sender)
+            self.log(f"{MSG_COUNTER} OK from {sender}")
+            if(sender > self.bestOK):
+                self.bestOK = sender
         if msg.type == BullyMsgType.COORDINATOR:
-            self.log(f"My new leader: {msg.data}")
+            self.log(f"{MSG_COUNTER} COORDINATOR: {msg.data} from {sender}")
             self.leader = sender
         self.scene.nodecolor(self.id,1,0,0)
         yield self.timeout(random.uniform(0.5,1.0))
