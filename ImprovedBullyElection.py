@@ -32,20 +32,25 @@ class MyNode(wsp.Node):
         if self.id == ELECTION_STARTER:
             self.scene.nodecolor(self.id,0,0,0)
             self.recv = True
-            yield self.timeout(2)
+            yield self.timeout(0.5)
             self.election()
         else:
             self.scene.nodecolor(self.id,.7,.7,.7)
 
     ##################
     def election(self):
+        self.log(f"ELECTION")
         self.OKreplies = []
         elecMsg = BullyMsg(BullyMsgType.ELECTION, src=self.id, data="")
         self.send(wsp.BROADCAST_ADDR, msg = elecMsg)        
-        #self.log(f"env: {self.sim.env}")
-        #timeout = self.sim.env.timeout(delay = 1)
-        #yield timeout
-        #self.log(f"Waited for timeout, got OKs from: {self.OKreplies}")
+        self.sim.delayed_exec(delay=0.5, func=self.coordinator)
+
+    ######################
+    def coordinator(self):
+        newLeader = max(self.OKreplies)
+        self.log(f"COORDINATOR: {newLeader}")
+        coordMsg = BullyMsg(BullyMsgType.COORDINATOR, src=self.id, data=newLeader)
+        self.send(wsp.BROADCAST_ADDR, msg = coordMsg)    
 
     ##################
     def broadcast(self):
@@ -54,18 +59,15 @@ class MyNode(wsp.Node):
 
     ##################
     def on_receive(self, sender, msg, **kwargs):
-        self.log(f"Receive message from {sender}")
         if msg.type == BullyMsgType.ELECTION:
-            self.log(f"Message was ELECTION")
             if self.id > sender:
-                self.log(f"I will reply OK")
+                self.log(f"OK")
                 okMsg = BullyMsg(BullyMsgType.OK, src=self.id, data="")
                 self.send(sender, okMsg)
         if msg.type == BullyMsgType.OK:
-            self.log(f"Message was OK")
             self.OKreplies.append(sender)
         if msg.type == BullyMsgType.COORDINATOR:
-            self.log(f"Message was COORDINATOR")
+            self.log(f"My new leader: {msg.data}")
             self.leader = sender
         self.scene.nodecolor(self.id,1,0,0)
         yield self.timeout(random.uniform(0.5,1.0))
@@ -76,12 +78,12 @@ sim = wsp.Simulator(
         timescale=1,
         visual=True,
         terrain_size=(SIZE,SIZE),
-        title="Flooding Demo")
-for x in range(2):
-    for y in range(2):
-        px = 100 + x*200
-        py = 100 + y*200
+        title="Improved Bully Election")
+for x in range(3):
+    for y in range(3):
+        px = 50 + x*200
+        py = 50 + y*200
         node = sim.add_node(MyNode, (px,py))
-        node.tx_range = SIZE
+        node.tx_range = 2*SIZE
         node.logging = True
 sim.run()
