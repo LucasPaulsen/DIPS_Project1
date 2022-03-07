@@ -6,6 +6,13 @@ ELECTION_STARTER = 0
 SIZE = 500
 MSG_COUNTER = 0
 
+def clearMsgCount():
+    global MSG_COUNTER
+    MSG_COUNTER = 0
+
+def getMsgCount():
+    return MSG_COUNTER
+
 def increment():
     global MSG_COUNTER    
     MSG_COUNTER = MSG_COUNTER+1
@@ -82,17 +89,18 @@ class MyNode(wsp.Node):
         yield self.timeout(random.uniform(0.5,1.0))
         
 ###########################################################
-sim = wsp.Simulator(
-        until=100,
-        timescale=1,
-        visual=True,
-        terrain_size=(SIZE,SIZE),
-        title="Improved Bully Election")
-for x in range(3):
-    for y in range(3):
-        px = 50 + x*200
-        py = 50 + y*200
-        node = sim.add_node(MyNode, (px,py))
-        node.tx_range = 2*SIZE
-        node.logging = True
-sim.run()
+if __name__ == '__main__':
+    sim = wsp.Simulator(
+            until=100,
+            timescale=1,
+            visual=True,
+            terrain_size=(SIZE,SIZE),
+            title="Improved Bully Election")
+    for x in range(3):
+        for y in range(3):
+            px = 50 + x*200
+            py = 50 + y*200
+            node = sim.add_node(MyNode, (px,py))
+            node.tx_range = 2*SIZE
+            node.logging = True
+    sim.run()
