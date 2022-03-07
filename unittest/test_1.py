@@ -1,8 +1,8 @@
-from ast import NodeTransformer
 from ImprovedBullyElection import BullyMsgType, MyNode, MSG_COUNTER, ELECTION_STARTER, SIZE
 import wsnsimpy.wsnsimpy_tk as wsp
 
 import unittest   # The test framework
+import logging
 
 
 
@@ -91,7 +91,28 @@ class Test_test_improvedBully(unittest.TestCase):
 
         sim.run()
         self.assertEqual(node.id,7)
-        self.assertTrue(MSG_COUNTER < (4*2))
+        print(MSG_COUNTER)
+
+    def test_8nodes_starter8(self):
+        ELECTION_STARTER = 8
+        sim = wsp.Simulator(
+            until=2,
+            timescale=1,
+            visual=True,
+            terrain_size=(SIZE,SIZE),
+            title="Improved Bully Election")
+        
+        for x in range(4):
+            for y in range(2):
+                px = 50 + x*200
+                py = 50 + y*200
+                node = sim.add_node(MyNode, (px,py))
+                node.tx_range = 2*SIZE
+                node.logging = True
+
+        sim.run()
+        self.assertEqual(node.id,7)
+        print(MSG_COUNTER)
         
 
 
