@@ -1,14 +1,18 @@
-from ImprovedBullyElection import BullyMsgType, MyNode, MSG_COUNTER, ELECTION_STARTER, SIZE
+from random import random
+from setuptools import setup
+from ImprovedBullyElection import *
 import wsnsimpy.wsnsimpy_tk as wsp
 
 import unittest   # The test framework
-import logging
-
 
 
 class Test_test_improvedBully(unittest.TestCase):
 
-    def test_2nodes_simple(self):
+
+
+    def test_2nodes_start0(self):
+        clearMsgCount()
+        setElectionStarter(0)
         sim = wsp.Simulator(
             until=2,
             timescale=1,
@@ -26,10 +30,12 @@ class Test_test_improvedBully(unittest.TestCase):
 
         sim.run()
         self.assertEqual(nodeA.bestOK,nodeB.id)
+        print(f"message count  {getMsgCount()} \n")
 
 
-    def test_2nodes_simple1(self):
-        ELECTION_STARTER = 1
+    def test_2nodes_start1(self):
+        clearMsgCount()
+        setElectionStarter(1)
         sim = wsp.Simulator(
             until=2,
             timescale=1,
@@ -47,15 +53,17 @@ class Test_test_improvedBully(unittest.TestCase):
 
         sim.run()
         self.assertEqual(nodeB.bestOK,nodeB.id)
+        print(f"message count  {getMsgCount()} \n")
 
 
     def test_8nodes_starter0(self):
-        ELECTION_STARTER = 0
+        clearMsgCount()
+        setElectionStarter(0)
         sim = wsp.Simulator(
             until=2,
             timescale=1,
             visual=True,
-            terrain_size=(SIZE,SIZE),
+            terrain_size=(SIZE*2,SIZE*2),
             title="Improved Bully Election")
         
         for x in range(4):
@@ -63,22 +71,26 @@ class Test_test_improvedBully(unittest.TestCase):
                 px = 50 + x*200
                 py = 50 + y*200
                 node = sim.add_node(MyNode, (px,py))
-                node.tx_range = 2*SIZE
+                node.tx_range = 4*SIZE
                 node.logging = True
 
         sim.run()
-        self.assertEqual(node.id,7)
-        self.assertTrue(MSG_COUNTER < (4*2))
+        self.assertEqual(node.leader,7)
+        self.assertTrue(getMsgCount() < (4*2)**2)
+        print(f"message count  {getMsgCount()} \n")
+
+        
 
 
 
     def test_8nodes_starter4(self):
-        ELECTION_STARTER = 4
+        clearMsgCount()
+        setElectionStarter(4)
         sim = wsp.Simulator(
             until=2,
             timescale=1,
             visual=True,
-            terrain_size=(SIZE,SIZE),
+            terrain_size=(SIZE*2,SIZE*2),
             title="Improved Bully Election")
         
         for x in range(4):
@@ -86,20 +98,23 @@ class Test_test_improvedBully(unittest.TestCase):
                 px = 50 + x*200
                 py = 50 + y*200
                 node = sim.add_node(MyNode, (px,py))
-                node.tx_range = 2*SIZE
+                node.tx_range = 4*SIZE
                 node.logging = True
 
         sim.run()
-        self.assertEqual(node.id,7)
-        print(MSG_COUNTER)
+        self.assertEqual(node.leader,7)
+        self.assertTrue(getMsgCount() < (4*2)**2)
+        print(f"message count  {getMsgCount()} \n")
+
 
     def test_8nodes_starter8(self):
-        ELECTION_STARTER = 8
+        clearMsgCount()
+        setElectionStarter(7)
         sim = wsp.Simulator(
             until=2,
             timescale=1,
             visual=True,
-            terrain_size=(SIZE,SIZE),
+            terrain_size=(SIZE*2,SIZE*2),
             title="Improved Bully Election")
         
         for x in range(4):
@@ -107,16 +122,14 @@ class Test_test_improvedBully(unittest.TestCase):
                 px = 50 + x*200
                 py = 50 + y*200
                 node = sim.add_node(MyNode, (px,py))
-                node.tx_range = 2*SIZE
+                node.tx_range = 4*SIZE
                 node.logging = True
 
         sim.run()
-        self.assertEqual(node.id,7)
-        print(MSG_COUNTER)
-        
 
-
-
+        self.assertEqual(node.leader,7)
+        self.assertTrue(getMsgCount() < (4*2)**2)
+        print(f"message count  {getMsgCount()} \n")
 
 
 

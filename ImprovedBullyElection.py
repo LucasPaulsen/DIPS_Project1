@@ -6,6 +6,10 @@ ELECTION_STARTER = 0
 SIZE = 500
 MSG_COUNTER = 0
 
+def setElectionStarter(starter):
+    global ELECTION_STARTER
+    ELECTION_STARTER = starter
+
 def clearMsgCount():
     global MSG_COUNTER
     MSG_COUNTER = 0
@@ -84,7 +88,7 @@ class MyNode(wsp.Node):
                 self.bestOK = sender
         if msg.type == BullyMsgType.COORDINATOR:
             self.log(f"{MSG_COUNTER} COORDINATOR: {msg.data} from {sender}")
-            self.leader = sender
+            self.leader = msg.data
         self.scene.nodecolor(self.id,1,0,0)
         yield self.timeout(random.uniform(0.5,1.0))
         
