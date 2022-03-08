@@ -62,11 +62,13 @@ class MyNode(wsp.Node):
             if n.id > self.id:
                 self.send(n.id, msg = elecMsg) 
 
+
         self.sim.delayed_exec(delay=0.5, func=self.coordinator)
 
     ######################
     def coordinator(self):
         coordMsg = BullyMsg(BullyMsgType.COORDINATOR, src=self.id, data=self.bestOK)
+        self.leader = self.bestOK
         self.send(wsp.BROADCAST_ADDR, msg = coordMsg)    
 
     ##################

@@ -107,7 +107,7 @@ class Test_test_improvedBully(unittest.TestCase):
         print(f"message count  {getMsgCount()} \n")
 
 
-    def test_8nodes_starter8(self):
+    def test_8nodes_starter7(self):
         clearMsgCount()
         setElectionStarter(7)
         sim = wsp.Simulator(
