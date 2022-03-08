@@ -1,78 +1,142 @@
-class MessageBroker:
-    def __init__(self):
-        self.msgCount = 0
-    def reset(self):
-        self.msgCount = 0
-    def msg(self, sndr, rcvr, text):
-        self.msgCount += 1
-        print(f"{self.msgCount}: P{sndr.ID}->P{rcvr.ID} - " + text)
+import random
+import wsnsimpy.wsnsimpy_tk as wsp
+from enum import Enum
 
-class Process:
-    def __init__(self, ID, alive, msgBroker):
-        self.ID = ID
-        self.alive = alive # whether the proces is alive
-        self.otherNodes = [] # list of all other processes in the system
-        self.bullied = False # indicates if the process has been bullied/overruled
-        self.elecPending = False # if the proces has just OK'd an election msg
-        self.coordPending = False # if the process has not been bullied and is about to be the coordinator
-        self.coordWait = 2 # Cycles to pass before announcing itself as coordinator
-        self.msgBroker = msgBroker # Reference to global message broker
-    
-    def setOtherProcs(self, procs):
-        for p in procs:
-            if (p != self):
-                self.otherNodes.append(p)
-
-    def tick(self):
-        if self.elecPending:
-            self.sendElection()
-        if self.coordPending:
-            if(self.coordWait > 0):
-                self.coordWait -= 1
-            elif (self.coordWait == 0):
-                for p in self.otherNodes:                    
-                    self.msgBroker.msg(self, p, "Coordinator")
-                self.coordPending = False
-                self.coordWait = 3
-            
-    def sendElection(self):
-        self.elecPending = False
-        self.bullied = False
-        for p in self.otherNodes:
-            if(p.ID > self.ID):
-                self.msgBroker.msg(self, p, "Election")
-                p.receiveElection(self)
-        if(self.bullied == False):
-            self.coordPending = True
-                
-    def receiveElection(self, p):
-        if(self.alive and self.ID > p.ID):
-            self.elecPending = True
-            self.msgBroker.msg(self, p, "OK")
-            p.receiveOK(self)
-            
-    def receiveOK(self, p): # 
-        self.bullied = True
+ELECTION_STARTER = 0
+SIZE = 500
+MSG_COUNTER = 0
+NO_OF_NODES = 9
 
 
-def Simulation(nProc, startProc, maxIter):
-    # nProc = number of processes to include
-    # startProc = the process starting the election  
-    msgBroker = MessageBroker()
-    procs = []
-    for i in range(nProc):
-        Px = Process(i+1, True, msgBroker)
-        procs.append(Px)
-    
-    for p in procs:
-        p.setOtherProcs(procs)
-        
-    procs[startProc].sendElection()
-    
-    for i in range(maxIter):
-        for p in procs:
-            p.tick()
-        
-   
-Simulation(60, 0, 100) # Run simulation
-        
+def setElectionStarter(starter):
+    global ELECTION_STARTER
+    ELECTION_STARTER = starter
+
+
+def clearMsgCount():
+    global MSG_COUNTER
+    MSG_COUNTER = 0
+
+
+def getMsgCount():
+    return MSG_COUNTER
+
+
+def increment():
+    global MSG_COUNTER
+    MSG_COUNTER = MSG_COUNTER+1
+
+
+class BullyMsgType(Enum):
+    ELECTION = 1
+    OK = 2
+    COORDINATOR = 3
+
+
+class BullyMsg:
+    def __init__(self, type=BullyMsgType.ELECTION, src="", dst="", data=0, path=[], sequence=0, version=1) -> None:
+        self.type = BullyMsgType(type)
+        self.src = src
+        self.dst = dst
+        self.data = data
+
+###########################################################
+
+
+class MyNode(wsp.Node):
+    tx_range = 100
+
+    ##################
+    def init(self):
+        super().init()
+        self.election_destinations = []
+        self.bully_replies = []
+        self.leader = None
+
+    ##################
+    def run(self):
+        if self.id == ELECTION_STARTER:
+            self.scene.nodecolor(self.id, 0, 0, 0)
+            self.recv = True
+            yield self.timeout(0.7)
+            self.election()
+        else:
+            self.scene.nodecolor(self.id, .7, .7, .7)
+
+    ##################
+    def election(self):
+        self.election_destinations = []
+        print(f'node #{self.id} is holding election START___________')
+
+        for n in self.neighbors:  # filter neighbors with higher ID
+            if n.id > self.id:
+                self.election_destinations.append(n.id)
+
+        if self.election_destinations:
+            elecMsg = BullyMsg(BullyMsgType.ELECTION,
+                               src=self.id, data=self.election_destinations)
+            # send election message to neighbors with higher ID
+            # the election message contains it's destinations,
+            # so the next available process can hold the election
+            for n in self.election_destinations:
+                self.send(n, msg=elecMsg)
+            if(len(self.election_destinations) == len(self.bully_replies)):
+                print('being bullied')
+        else:
+            self.coordinator()  # the node has highest id so it becomes a leader
+
+    ######################
+
+    def coordinator(self):
+        coordMsg = BullyMsg(BullyMsgType.COORDINATOR,
+                            src=self.id, data=self.id)
+        self.leader = self.id
+        print(f'NODE {self.id} is the new LEADER')
+        self.send(wsp.BROADCAST_ADDR, msg=coordMsg)
+
+    ##################
+    def broadcast(self):
+        self.scene.nodewidth(self.id, len(self.neighbors))
+        self.send(wsp.BROADCAST_ADDR)
+
+    ##################
+    def on_receive(self, sender, msg, **kwargs):
+        increment()
+        if msg.type == BullyMsgType.ELECTION:
+            self.log(f"{MSG_COUNTER} ELECTION from {sender}")
+            if self.id > sender:
+                okMsg = BullyMsg(BullyMsgType.OK, src=self.id, data="")
+                self.send(sender, okMsg)
+                # sort the array and hold election from smallest ID(process)
+                msg.data.sort()
+                if msg.data[0] == self.id:
+                    self.sim.delayed_exec(delay=0.5, func=self.election)
+
+        if msg.type == BullyMsgType.OK:
+            self.log(f"{MSG_COUNTER} OK from {sender}")
+            self.bully_replies.append(sender)
+
+        if msg.type == BullyMsgType.COORDINATOR:
+            self.log(f"{MSG_COUNTER} COORDINATOR: {msg.data} from {sender}")
+            self.leader = msg.data
+        self.scene.nodecolor(self.id, 1, 0, 0)
+
+        yield self.timeout(random.uniform(0.5, 1.0))
+
+
+###########################################################
+if __name__ == '__main__':
+    sim = wsp.Simulator(
+        until=100,
+        timescale=1,
+        visual=True,
+        terrain_size=(SIZE, SIZE),
+        title="Bully Election")
+    for x in range(3):
+        for y in range(3):
+            px = 50 + x*200
+            py = 50 + y*200
+            node = sim.add_node(MyNode, (px, py))
+            node.tx_range = 2*SIZE
+            node.logging = True
+    sim.run()
