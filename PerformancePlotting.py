@@ -29,9 +29,9 @@ for n in range(2, MAX_NODES+1):
     results.append(getMsgCount())
 
 plt.scatter(ns, results)
-plt.title("Improved bully algorithm")
+plt.title("Standard bully algorithm")
 plt.xlabel("Number of nodes")
 plt.ylabel("Number of messages")
 plt.xticks(np.linspace(2,20,10))
-plt.yticks(np.linspace(0,60,7))
+plt.yticks(np.linspace(0,400, num=9))
 plt.show()
