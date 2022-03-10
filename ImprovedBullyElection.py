@@ -34,6 +34,15 @@ class BullyMsg:
         self.data = data
 
 ###########################################################
+# for unit testing:
+def bestCandidate(selfID, neighborIDs):
+    res = []
+    for n in neighborIDs:
+        if n > selfID:
+            res.append(n)
+    return res
+
+###########################################################
 class MyNode(wsp.Node):
     tx_range = 100
 
@@ -57,11 +66,12 @@ class MyNode(wsp.Node):
     def election(self):
         self.bestOK = self.id
         elecMsg = BullyMsg(BullyMsgType.ELECTION, src=self.id, data="")
-        
+        nodes = []
         for n in self.neighbors:
-            if n.id > self.id:
-                self.send(n.id, msg = elecMsg) 
-
+            nodes.append(n.id)
+        candidates = bestCandidate(self.id, nodes)
+        for n in candidates:
+            self.send(n, msg = elecMsg)
 
         self.sim.delayed_exec(delay=0.5, func=self.coordinator)
 
