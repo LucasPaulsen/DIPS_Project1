@@ -49,7 +49,6 @@ class MyNode(wsp.Node):
     ##################
     def init(self):
         super().init()
-        self.election_destinations = []
         self.bullied = False
         self.leader = None
         self.election_held = False
