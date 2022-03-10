@@ -50,8 +50,9 @@ class MyNode(wsp.Node):
     def init(self):
         super().init()
         self.election_destinations = []
-        self.bully_replies = []
+        self.bullied = False
         self.leader = None
+        self.election_held = False
 
     ##################
     def run(self):
@@ -65,34 +66,27 @@ class MyNode(wsp.Node):
 
     ##################
     def election(self):
-        self.election_destinations = []
+        self.bullied = False
         print(f'node #{self.id} is holding election START___________')
+        elecMsg = BullyMsg(BullyMsgType.ELECTION,
+                           src=self.id, data="")
 
         for n in self.neighbors:  # filter neighbors with higher ID
             if n.id > self.id:
-                self.election_destinations.append(n.id)
+                self.send(n.id, msg=elecMsg)
 
-        if self.election_destinations:
-            elecMsg = BullyMsg(BullyMsgType.ELECTION,
-                               src=self.id, data=self.election_destinations)
-            # send election message to neighbors with higher ID
-            # the election message contains it's destinations,
-            # so the next available process can hold the election
-            for n in self.election_destinations:
-                self.send(n, msg=elecMsg)
-            if(len(self.election_destinations) == len(self.bully_replies)):
-                print('being bullied')
-        else:
-            self.coordinator()  # the node has highest id so it becomes a leader
+        self.election_held = True
+        self.sim.delayed_exec(delay=0.5, func=self.coordinator)
 
     ######################
 
     def coordinator(self):
-        coordMsg = BullyMsg(BullyMsgType.COORDINATOR,
-                            src=self.id, data=self.id)
-        self.leader = self.id
-        print(f'NODE {self.id} is the new LEADER')
-        self.send(wsp.BROADCAST_ADDR, msg=coordMsg)
+        if(not self.bullied):
+            coordMsg = BullyMsg(BullyMsgType.COORDINATOR,
+                                src=self.id, data="")
+            self.leader = self.id
+            print(f'NODE {self.id} is the new LEADER')
+            self.send(wsp.BROADCAST_ADDR, msg=coordMsg)
 
     ##################
     def broadcast(self):
@@ -107,18 +101,16 @@ class MyNode(wsp.Node):
             if self.id > sender:
                 okMsg = BullyMsg(BullyMsgType.OK, src=self.id, data="")
                 self.send(sender, okMsg)
-                # sort the array and hold election from smallest ID(process)
-                msg.data.sort()
-                if msg.data[0] == self.id:
-                    self.sim.delayed_exec(delay=0.5, func=self.election)
+                if self.election_held is False:
+                    self.election()
 
         if msg.type == BullyMsgType.OK:
+            self.bullied = True
             self.log(f"{MSG_COUNTER} OK from {sender}")
-            self.bully_replies.append(sender)
 
         if msg.type == BullyMsgType.COORDINATOR:
-            self.log(f"{MSG_COUNTER} COORDINATOR: {msg.data} from {sender}")
-            self.leader = msg.data
+            self.log(f"{MSG_COUNTER} COORDINATOR: {sender}")
+            self.leader = sender
         self.scene.nodecolor(self.id, 1, 0, 0)
 
         yield self.timeout(random.uniform(0.5, 1.0))
@@ -132,10 +124,10 @@ if __name__ == '__main__':
         visual=True,
         terrain_size=(SIZE, SIZE),
         title="Bully Election")
-    for x in range(3):
-        for y in range(3):
-            px = 50 + x*200
-            py = 50 + y*200
+    for x in range(4):
+        for y in range(4):
+            px = 50 + x*50
+            py = 50 + y*50
             node = sim.add_node(MyNode, (px, py))
             node.tx_range = 2*SIZE
             node.logging = True

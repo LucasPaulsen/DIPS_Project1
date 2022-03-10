@@ -1,4 +1,5 @@
-from ImprovedBullyElection import *
+#from ImprovedBullyElection import *
+from BullyElection import *
 import matplotlib.pyplot as plt
 import numpy as np
 
